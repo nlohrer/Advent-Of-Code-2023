@@ -18,7 +18,8 @@
 
         public override ValueTask<string> Solve_2()
         {
-            throw new NotImplementedException();
+            int sum = SumUpMinima(_input);
+            return new ValueTask<string>(sum.ToString());
         }
 
         public static int CountValidGames(string input)
@@ -42,7 +43,7 @@
         public static bool CheckForValidMaxima(string game)
         {
             if (game == "") return false;
-            string subGames = game.Substring(game.IndexOf(':') + 1, game.Length - game.IndexOf(':') - 1);
+            string subGames = game.Substring(game.IndexOf(':') + 1);
             foreach (string subGame in subGames.Split(';'))
             {
                 Dictionary<string, int> subGameValues = ParseSubGame(subGame);
@@ -55,6 +56,37 @@
                 }
             }
             return true;
+        }
+
+        public static int SumUpMinima(string input)
+        {
+            int sum = input
+                .Split('\n')
+                .Select(DetermineMinima)
+                .Select(minima => minima.Values.Aggregate(1, (x, y) => x * y))
+                .Sum();
+            return sum;
+        }
+
+        public static Dictionary<string, int> DetermineMinima(string game)
+        {
+            Dictionary<string, int> initialMaxima = new() { { "blue", 0 }, { "red", 0 }, { "green", 0 } };
+            if (game == "") return initialMaxima;
+
+            string subGames = game.Substring(game.IndexOf(':') + 1);
+            foreach (string subGame in subGames.Split(';'))
+            {
+                Dictionary<string, int> subGameValues = ParseSubGame(subGame);
+                foreach (string color in new string[] { "red", "blue", "green" })
+                {
+                    if (initialMaxima[color] < subGameValues[color])
+                    {
+                        initialMaxima[color] = subGameValues[color];
+                    }
+                }
+            }
+
+            return initialMaxima;
         }
 
         public static Dictionary<string, int> ParseSubGame(string subGame)
@@ -114,7 +146,7 @@
         }
 
         [Fact]
-        public void checkTestInputForPossibleGames()
+        public void CheckTestInputForPossibleGames()
         {
             bool[] values = _testInput
                 .Split(Environment.NewLine)
@@ -125,10 +157,26 @@
         }
 
         [Fact]
-        public void checkTestInputCount()
+        public void CheckTestInputCount()
         {
             int count = Day02.CountValidGames(_testInput);
             Assert.Equal(8, count);
+        }
+
+        [Fact]
+        public void CheckMinimaForSingleGame()
+        {
+            string input = "Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red";
+            Dictionary<string, int> expected = new() { { "green", 13 }, { "red", 20 }, { "blue", 6 } };
+            Dictionary<string, int> maxima = Day02.DetermineMinima(input);
+            Assert.Equal(expected, maxima);
+        }
+
+        [Fact]
+        public void SumUpTestInput()
+        {
+            int sum = Day02.SumUpMinima(_testInput);
+            Assert.Equal(2286, sum);
         }
     }
 }
