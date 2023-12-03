@@ -8,7 +8,7 @@ public class Day03 : BaseDay
     public Day03()
     {
         _input = File.ReadAllText(InputFilePath);
-        _schema  = _input
+        _schema = _input
         .Split('\n')
         .Where(line => line != "")
         .Select(line => line.ToArray())
@@ -23,7 +23,71 @@ public class Day03 : BaseDay
 
     public override ValueTask<string> Solve_2()
     {
-        throw new NotImplementedException();
+        int sum = GetGearRatios(_schema).Sum();
+        return new ValueTask< string>(sum.ToString());
+    }
+
+    public static List<int> GetGearRatios(char[][] schematic)
+    {
+        Dictionary<ValueTuple<int, int>, HashSet<int>> gearsWithAdjacentNumbers = GetGearsWithAdjacentNumbers(schematic);
+        var gearRatios = new List<int>();
+
+        foreach (var gearWithAdjacentNumbers in gearsWithAdjacentNumbers)
+        {
+            HashSet<int> adjacent = gearWithAdjacentNumbers.Value;
+            if (adjacent.Count == 2)
+            {
+                int gearRatio = adjacent.Aggregate(1, (x, y) => x * y);
+                gearRatios.Add(gearRatio);
+            }
+        }
+
+        return gearRatios;
+    }
+
+    public static Dictionary<ValueTuple<int, int>, HashSet<int>> GetGearsWithAdjacentNumbers(char[][] schematic)
+    {
+        Dictionary<ValueTuple<int, int>, HashSet<int>> gearsWithAdjacentNumbers = new();
+
+        for (int i = 0; i < schematic.Length; i++)
+        {
+            int j = 0;
+            while (j < schematic[i].Length)
+            {
+                if (int.TryParse(schematic[i][j].ToString(), out int firstDigit))
+                {
+                    List<char> number = new() { schematic[i][j] };
+                    HashSet<ValueTuple<int, int>> adjacentGears = GetAdjacentGears(i, j, schematic);
+                    j++;
+                    while (j < schematic[i].Length && int.TryParse(schematic[i][j].ToString(), out int _))
+                    {
+                        number.Add(schematic[i][j]);
+                        foreach (ValueTuple<int, int> adjacentGear in GetAdjacentGears(i, j, schematic))
+                        {
+                            adjacentGears.Add(adjacentGear);
+                        }
+                        j++;
+                    }
+                    int parsedNumber = int.Parse(new string(number.ToArray()));
+                    foreach (ValueTuple<int, int> gear in adjacentGears)
+                    {
+                        if (gearsWithAdjacentNumbers.ContainsKey(gear))
+                        {
+                            gearsWithAdjacentNumbers[gear].Add(parsedNumber);
+                        }
+                        else
+                        {
+                            gearsWithAdjacentNumbers[gear] = new HashSet<int> { parsedNumber };
+                        }
+                    }
+                }
+                else
+                {
+                    j++;
+                }
+            }
+        }
+        return gearsWithAdjacentNumbers;
     }
 
     public static List<int> FindNumbersAdjacentToSymbols(char[][] schematic)
@@ -54,13 +118,42 @@ public class Day03 : BaseDay
                     {
                         numbers.Add(int.Parse(new string(number.ToArray())));
                     }
-                } else
+                }
+                else
                 {
                     j++;
                 }
             }
         }
         return numbers;
+    }
+
+    public static HashSet<ValueTuple<int, int>> GetAdjacentGears(int row, int col, char[][] schematic)
+    {
+        HashSet<ValueTuple<int, int>> adjacentGears = new();
+        for (int currentRowIndex = row - 1; currentRowIndex < row + 2; currentRowIndex++)
+        {
+            if (currentRowIndex < 0 || currentRowIndex >= schematic.Length)
+            {
+                continue;
+            }
+
+            char[] currentRow = schematic[currentRowIndex];
+            for (int currentColIndex = col - 1; currentColIndex < col + 2; currentColIndex++)
+            {
+                if (currentColIndex < 0 || currentColIndex >= currentRow.Length)
+                {
+                    continue;
+                }
+                char current = currentRow[currentColIndex];
+
+                if (current == '*')
+                {
+                    adjacentGears.Add((currentRowIndex, currentColIndex));
+                }
+            }
+        }
+        return adjacentGears;
     }
 
     public static bool AdjacentToSymbol(int row, int col, char[][] schematic)
@@ -141,5 +234,12 @@ public class Day03Tests
         int sum = numbers.Sum();
         int expected = 4361;
         Assert.Equal(expected, sum);
+    }
+
+    [Fact]
+    public void CheckForGearAdjacency()
+    {
+        int sum = Day03.GetGearRatios(_schema).Sum();
+        Assert.Equal(467835, sum);
     }
 }
