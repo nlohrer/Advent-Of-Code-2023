@@ -24,7 +24,7 @@ public class Day03 : BaseDay
     public override ValueTask<string> Solve_2()
     {
         int sum = GetGearRatios(_schema).Sum();
-        return new ValueTask< string>(sum.ToString());
+        return new ValueTask<string>(sum.ToString());
     }
 
     public static List<int> GetGearRatios(char[][] schematic)
@@ -54,37 +54,28 @@ public class Day03 : BaseDay
             int j = 0;
             while (j < schematic[i].Length)
             {
-                if (int.TryParse(schematic[i][j].ToString(), out int firstDigit))
+                if (char.IsNumber(schematic[i][j]))
                 {
-                    List<char> number = new() { schematic[i][j] };
-                    HashSet<ValueTuple<int, int>> adjacentGears = GetAdjacentGears(i, j, schematic);
-                    j++;
-                    while (j < schematic[i].Length && int.TryParse(schematic[i][j].ToString(), out int _))
+                    List<char> number = new();
+                    HashSet<ValueTuple<int, int>> adjacentGears = new();
+                    while (j < schematic[i].Length && char.IsNumber(schematic[i][j]))
                     {
                         number.Add(schematic[i][j]);
                         foreach (ValueTuple<int, int> adjacentGear in GetAdjacentGears(i, j, schematic))
-                        {
                             adjacentGears.Add(adjacentGear);
-                        }
                         j++;
                     }
                     int parsedNumber = int.Parse(new string(number.ToArray()));
                     foreach (ValueTuple<int, int> gear in adjacentGears)
                     {
                         if (gearsWithAdjacentNumbers.ContainsKey(gear))
-                        {
                             gearsWithAdjacentNumbers[gear].Add(parsedNumber);
-                        }
                         else
-                        {
                             gearsWithAdjacentNumbers[gear] = new HashSet<int> { parsedNumber };
-                        }
                     }
                 }
                 else
-                {
                     j++;
-                }
             }
         }
         return gearsWithAdjacentNumbers;
@@ -93,94 +84,107 @@ public class Day03 : BaseDay
     public static List<int> FindNumbersAdjacentToSymbols(char[][] schematic)
     {
         List<int> numbers = new();
-        bool adjacent;
 
         for (int i = 0; i < schematic.Length; i++)
         {
             int j = 0;
             while (j < schematic[i].Length)
             {
-                if (int.TryParse(schematic[i][j].ToString(), out int firstDigit))
+                if (char.IsNumber(schematic[i][j]))
                 {
-                    List<char> number = new() { schematic[i][j] };
-                    adjacent = AdjacentToSymbol(i, j, schematic);
-                    j++;
-                    while (j < schematic[i].Length && int.TryParse(schematic[i][j].ToString(), out int _))
+                    List<char> number = new();
+                    bool adjacent = false;
+                    while (j < schematic[i].Length && char.IsNumber(schematic[i][j]))
                     {
                         number.Add(schematic[i][j]);
-                        if (AdjacentToSymbol(i, j, schematic))
-                        {
-                            adjacent = true;
-                        }
+                        adjacent |= AdjacentToSymbol(i, j, schematic);
                         j++;
                     }
                     if (adjacent)
-                    {
                         numbers.Add(int.Parse(new string(number.ToArray())));
-                    }
                 }
                 else
-                {
                     j++;
-                }
             }
         }
         return numbers;
+
+        // Functional solution
+        //IEnumerable<int> rowIndices = Enumerable.Range(0, schematic.Length),
+        //    colIndices = Enumerable.Range(0, schematic[0].Length);
+
+        //var found = (from i in rowIndices
+        //        from j in colIndices
+        //        where
+        //             char.IsNumber(schematic[i][j])
+        //             && AdjacentToSymbol(i, j, schematic)
+        //        let lastIndex = findIndexOfLast(schematic[i], j)
+        //        let number = new string(completeNumber(schematic[i], lastIndex).ToArray())
+        //        select ((i, j), int.Parse(number)))
+        //       .ToDictionary();
+
+        //var indices = found.Keys.Where(tuple => !found.Keys.Contains((tuple.i, tuple.j - 1)));
+        //return found.Where(tuple => indices.Contains(tuple.Key)).Select(tuple => tuple.Value).ToList();
+
+        //int findIndexOfLast(char[] col, int j)
+        //{
+        //    if (j == col.Length - 1) return j;
+        //    char following = col[j + 1];
+        //    if (!char.IsNumber(following)) return j;
+        //    else return findIndexOfLast(col, j + 1);
+        //}
+
+        //List<char> completeNumber(char[] col, int j)
+        //{
+        //    if (j == -1) return [];
+        //    char current = col[j];
+        //    if (!char.IsNumber(current)) return [];
+        //    List<char> proceeding = completeNumber(col, j - 1);
+        //    proceeding.Add(current);
+        //    return proceeding;
+        //}
     }
 
     public static HashSet<ValueTuple<int, int>> GetAdjacentGears(int row, int col, char[][] schematic)
     {
-        HashSet<ValueTuple<int, int>> adjacentGears = new();
-        for (int currentRowIndex = row - 1; currentRowIndex < row + 2; currentRowIndex++)
-        {
-            if (currentRowIndex < 0 || currentRowIndex >= schematic.Length)
-            {
-                continue;
-            }
-
-            char[] currentRow = schematic[currentRowIndex];
-            for (int currentColIndex = col - 1; currentColIndex < col + 2; currentColIndex++)
-            {
-                if (currentColIndex < 0 || currentColIndex >= currentRow.Length)
-                {
-                    continue;
-                }
-                char current = currentRow[currentColIndex];
-
-                if (current == '*')
-                {
-                    adjacentGears.Add((currentRowIndex, currentColIndex));
-                }
-            }
-        }
-        return adjacentGears;
+        IEnumerable<int> rows = Enumerable.Range(row - 1, 3), cols = Enumerable.Range(col - 1, 3);
+        return (from i in rows
+                from j in cols
+                where
+                    i >= 0 && j >= 0
+                    && i < schematic.Length && j < schematic[i].Length
+                    && schematic[i][j] == '*'
+                select (i, j))
+                .ToHashSet();
     }
 
     public static bool AdjacentToSymbol(int row, int col, char[][] schematic)
     {
-        for (int currentRowIndex = row - 1; currentRowIndex < row + 2; currentRowIndex++)
-        {
-            if (currentRowIndex < 0 || currentRowIndex >= schematic.Length)
-            {
-                continue;
-            }
+        IEnumerable<int> rows = Enumerable.Range(row - 1, 3), cols = Enumerable.Range(col - 1, 3);
 
-            char[] currentRow = schematic[currentRowIndex];
-            for (int currentColIndex = col - 1; currentColIndex < col + 2; currentColIndex++)
-            {
-                if (currentColIndex < 0 || currentColIndex >= currentRow.Length)
-                {
-                    continue;
-                }
-                char current = currentRow[currentColIndex];
+        return (from i in rows
+                from j in cols
+                where
+                    i >= 0 && j >= 0
+                    && i < schematic.Length && j < schematic[i].Length
+                let current = schematic[i][j]
+                where !char.IsDigit(current) && current != '.' && current != ' '
+                select current
+                ).Any();
 
-                if (!int.TryParse(current.ToString(), out int _) && current != '.' && current != ' ')
-                {
-                    return true;
-                }
-            }
-        }
-        return false;
+        // Alternative:
+        //Func<bool, bool, bool> or = (bool x, bool y) => x || y;
+        //return rows
+        //    .Select(i => i >= 0 && i < schematic.Length && cols
+        //        .Select(j =>
+        //        {
+        //            if (j < 0 || j >= schematic[i].Length)
+        //                return false;
+        //            char current = schematic[i][j];
+        //            return !char.IsDigit(current) && current != '.' && current != ' ';
+        //        })
+        //        .Aggregate(or))
+        //    .Aggregate(or);
     }
 }
 
@@ -197,7 +201,6 @@ public class Day03Tests
         ......755.
         ...$.*....
         .664.598..
-
         """;
     static char[][] _schema = _testInput
         .Split(Environment.NewLine)
