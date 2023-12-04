@@ -18,20 +18,57 @@ namespace AdventOfCode
 
         public override ValueTask<string> Solve_2()
         {
-            throw new NotImplementedException();
+            var edges = BuildGraph(_input);
+            var found = new Dictionary<int, int>();
+
+            int total = edges.Count;
+            foreach (int card in edges.Keys)
+                total += AmountGenerated(card, edges, found);
+
+            return new ValueTask<string>(total.ToString());
+        }
+
+        public static int AmountGenerated(int card, Dictionary<int, List<int>> edges, Dictionary<int, int> found)
+        {
+            if (found.Keys.Contains(card))
+                return found[card];
+            int value;
+            List<int> copies = edges[card];
+            if (!copies.Any())
+                value = 0;
+            else
+                value = copies.Count + copies.Select((int copy) => AmountGenerated(copy, edges, found)).Sum();
+            found.Add(card, value);
+            return value;
+        }
+
+        public static Dictionary<int, List<int>> BuildGraph(IEnumerable<string> input)
+        {
+            return input.Select((line, i) =>
+            {
+                int count = GetMatching(line);
+                List<int> copies = Enumerable.Range(i + 2, count).ToList();
+                return (i + 1, copies);
+            }).ToDictionary();
         }
 
         public static int CalculatePoints(string line)
         {
-            var lists = GetListsFromLine(line);
-            List<int> winning = lists[0], having = lists[1];
-            int count = (from winningNumber in winning
-                        from havingNumber in having
-                        where winningNumber == havingNumber
-                        select winningNumber).Count();
+            int count = GetMatching(line);
             if (count == 0)
                 return 0;
             return Enumerable.Repeat(1, count - 1).Aggregate(1, (x, y) => x * 2);
+        }
+
+        public static int GetMatching(string line)
+        {
+            var lists = GetListsFromLine(line);
+            List<int> winning = lists[0], having = lists[1];
+            int count = (from winningNumber in winning
+                         from havingNumber in having
+                         where winningNumber == havingNumber
+                         select winningNumber).Count();
+            return count;
         }
 
         public static List<List<int>> GetListsFromLine(string line)
@@ -68,6 +105,21 @@ namespace AdventOfCode
                 .Select(Day04.CalculatePoints)
                 .Sum();
             Assert.Equal(13, sum);
+        }
+
+        [Fact]
+        public void CalculateTotal()
+        {
+            var edges = Day04.BuildGraph(_testInput.Split(Environment.NewLine));
+            var found = new Dictionary<int, int>();
+
+            int total = edges.Count;
+            foreach (int card in edges.Keys)
+            {
+                total += Day04.AmountGenerated(card, edges, found);
+            }
+
+            Assert.Equal(30, total);
         }
     }
 }
