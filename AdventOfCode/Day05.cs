@@ -1,4 +1,6 @@
 ﻿
+using System.Runtime.CompilerServices;
+
 namespace AdventOfCode
 {
     public class Day05 : BaseDay
@@ -12,36 +14,72 @@ namespace AdventOfCode
 
         public override ValueTask<string> Solve_1()
         {
-            List<long> locations = ApplyMaps(_input);
-            long solution = locations.Min();
+            List<uint> locations = ApplyMaps(_input, GetSeedsPart01);
+            uint solution = locations.Min();
             return new ValueTask<string>(solution.ToString());
         }
 
+        // Brute force solution that took 67 minutes to run
         public override ValueTask<string> Solve_2()
         {
-            throw new NotImplementedException();
-        }
+            List<uint> locations = ApplyMaps(_input, GetSeedsPart02);
+            uint solution = locations.Min();
+            return new ValueTask<string>(solution.ToString());        }
 
-        public static List<long> ApplyMaps(string _input)
+        public static List<uint> ApplyMaps(string input, Func<string, List<uint>> GetSeeds)
         {
-            string[] split = _input.Split("\n\n");
-            List<long> seeds = split[0].Substring(split[0].IndexOf(':') + 2).Split(' ').Select(long.Parse).ToList();
-            List<Func<long, long>> maps = split.Skip(1)
+            string[] split = input.Split("\n\n");
+            List<uint> seeds = GetSeeds(input);
+            List<Func<uint, uint>> maps = split.Skip(1)
                 .Select(parts => parts.Split('\n').Skip(1)
                     .Where(str => str != "")
                     .Select(mapPart => MapPart.FromArray(mapPart.Split(' ')))
                     .ToList())
                 .Select(GetMap).ToList();
-            Func<long, long> totalMap = maps
-                .Aggregate((Func<long, long> map1, Func<long, long> map2) => 
-                    (long source) => map2(map1(source)));
-            List<long> locations = seeds.Select(seed => totalMap(seed)).ToList();
-            return locations;
+            Func<uint, uint> totalMap = maps
+                .Aggregate((Func<uint, uint> map1, Func<uint, uint> map2) => 
+                    (uint source) => map2(map1(source)));
+            List<uint> locations = new();
+            uint min = uint.MaxValue;
+            foreach (uint seed in seeds)
+            {
+                uint location = totalMap(seed);
+                if (location < min)
+                    min = location;
+            }
+            //List<uint> locations = seeds.Select(seed => totalMap(seed)).ToList();
+            return new List<uint> { min };
         }
 
-        public static Func<long, long> GetMap(List<MapPart> mapParts)
+        public static List<uint> GetSeedsPart01(string input)
         {
-            Func<long, long> map = (long source) =>
+            string[] split = input.Split("\n\n");
+            List<uint> seeds = split[0].Substring(split[0].IndexOf(':') + 2).Split(' ').Select(uint.Parse).ToList();
+            return seeds;
+        }
+
+        public static List<uint> GetSeedsPart02(string input)
+        {
+            string[] split = input.Split("\n\n");
+            List<uint> seedList = split[0].Substring(split[0].IndexOf(':') + 2).Split(' ').Select(uint.Parse).ToList();
+            List<uint> seeds = new();
+            for (int i = 0; i < seedList.Count; i += 2)
+                for (uint j = seedList[i]; j < seedList[i] + seedList[i + 1]; j++)
+                    seeds.Add(j);
+            return seeds;
+        }
+
+        //public static List<Range> GetRangeMap(List<MapPart> mapParts)
+        //{
+        //    mapParts.ForEach(mapPart =>
+        //    {
+        //        Range originalRange = new Range()
+        //    })
+        //}
+
+        public static Func<uint, uint> GetMap(List<MapPart> mapParts)
+        {
+            Func<uint, uint> map = (uint source) =>
             {
                 MapPart fitting = mapParts
                 .Where(mapPart => mapPart.Source <= source && source < mapPart.Source + mapPart.Range)
@@ -51,14 +89,61 @@ namespace AdventOfCode
             return map;
         }
 
+        public static List<SRange> CalculatePossible(SRange interval, List<SRange> ranges)
+        {
+            List<SRange> intersects = new();
+            //List<SRange> newRanges = new();
+
+            foreach (SRange range in ranges)
+            {
+                intersects.Add(interval.Intersection(range));
+            }
+
+            List<SRange> staySame = new();
+            for (int i = 0; i < intersects.Count - 1; i++)
+            {
+                SRange intersect1 = intersects[i], intersect2 = intersects[i + 1];
+                SRange same = intersect1.GetBetween(intersect2);
+                if (same.Min != same.Max)
+                    staySame.Add(same);
+            }
+
+            List<SRange> newRanges = intersects.Union(staySame).ToList();
+            return newRanges;
+        }
+
     }
 
-    public record MapPart(long Destination, long Source, long Range)
+    public record MapPart(uint Destination, uint Source, uint Range)
     {
         public static MapPart FromArray(string[] array)
         {
-            long[] arr = array.Select(long.Parse).ToArray();
+            uint[] arr = array.Select(uint.Parse).ToArray();
             return new MapPart(arr[0], arr[1], arr[2]);
+        }
+    }
+
+    public record SRange(uint Min, uint Max)
+    {
+        public SRange Intersection(SRange b)
+        {
+            return new SRange(
+                Min: this.Min > b.Min ? this.Min : b.Min,
+                Max: this.Max < b.Max ? this.Max : b.Max
+            );
+       }
+ 
+        public SRange GetBetween(SRange b)
+        {
+            return new SRange(
+                Min: this.Max <= b.Min ? this.Max : b.Max,
+                Max: this.Max <= b.Min ? b.Min : this.Min
+                );
+        }
+
+        public SRange Add(uint difference)
+        {
+            return new SRange(Min + difference, Max + difference);
         }
     }
 
@@ -68,14 +153,14 @@ namespace AdventOfCode
         public void ApplyOnce()
         {
             string[] split = _testInput.Split("\n\n");
-            List<long> seeds = split[0].Substring(split[0].IndexOf(':') + 2).Split(' ').Select(long.Parse).ToList();
-            List<Func<long, long>> maps = split.Skip(1)
+            List<uint> seeds = split[0].Substring(split[0].IndexOf(':') + 2).Split(' ').Select(uint.Parse).ToList();
+            List<Func<uint, uint>> maps = split.Skip(1)
                .Select(parts => parts.Split('\n').Skip(1)
                    .Select(mapPart => MapPart.FromArray(mapPart.Split(' ')))
                    .ToList())
                .Select(Day05.GetMap).ToList();
-            Func<long, long> first = maps[0];
-            List<long> soils = seeds.Select(first).ToList();
+            Func<uint, uint> first = maps[0];
+            List<uint> soils = seeds.Select(first).ToList();
 
             Assert.Equal([81, 14, 57, 13], soils);
         }
@@ -84,8 +169,25 @@ namespace AdventOfCode
         [Fact]
         public void Part01()
         {
-            List<long> locations = Day05.ApplyMaps(_testInput);
+            List<uint> locations = Day05.ApplyMaps(_testInput, Day05.GetSeedsPart01);
             Assert.Equal([82, 43, 86, 35], locations);
+        }
+
+        [Fact]
+        public void Part02()
+        {
+            List<uint> locations = Day05.ApplyMaps(_testInput, Day05.GetSeedsPart02);
+            // Assert.Equal(46, locations.Min());
+        }
+
+        [Fact]
+        public void TestRanges()
+        {
+            SRange initial = new SRange(50, 80);
+            SRange s1 = new(55, 65), s2 = new(68, 70), s3 = new(70, 74), s4 = new(78, 90);
+            List<SRange> ranges = [s1, s2, s3, s4];
+            List<SRange> next = Day05.CalculatePossible(initial, ranges);
+            Assert.Equal(1, 2);
         }
 
         string _testInput = """
