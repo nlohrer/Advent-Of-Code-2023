@@ -11,16 +11,17 @@ namespace AdventOfCode
         }
         public override ValueTask<string> Solve_1()
         {
-            int sum = _input.Split('\n').Where(line => line != "").Select(SolvePart1).Sum();
+            int sum = _input.Split('\n').Where(line => line != "").Select(line => SolveParts(line, true)).Sum();
             return new ValueTask<string>(sum.ToString());
         }
 
         public override ValueTask<string> Solve_2()
         {
-            throw new NotImplementedException();
+            int sum = _input.Split('\n').Where(line => line != "").Select(line => SolveParts(line, false)).Sum();
+            return new ValueTask<string>(sum.ToString());
         }
 
-        public static int SolvePart1(string line)
+        public static int SolveParts(string line, bool useLast)
         {
             List<List<int>> sequences = new() { line.Split(' ').Where(str => str != "").Select(int.Parse).ToList() };
             List<int> next = sequences[0];
@@ -34,7 +35,10 @@ namespace AdventOfCode
             int last = 0;
             foreach(var sequence in sequences)
             {
-                last = sequence.Last() + last;
+                if (useLast)
+                    last = sequence.Last() + last;
+                else
+                    last = sequence.First() - last;
             }
 
             return last;
@@ -62,8 +66,15 @@ namespace AdventOfCode
         [Fact]
         public void Part1()
         {
-            var result = _testInput.Split('\n').Select(Day09.SolvePart1).ToList();
+            var result = _testInput.Split('\n').Select(line => Day09.SolveParts(line, true)).ToList();
             Assert.Equal([18, 28, 68], result);
+        }
+
+        [Fact]
+        public void Part2()
+        {
+            var result = _testInput.Split('\n').Select(line => Day09.SolveParts(line, false)).ToList();
+            Assert.Equal([-3, 0, 5], result);
         }
     }
 }
