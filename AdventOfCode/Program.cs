@@ -2,7 +2,7 @@ using AdventOfCode;
 
 if (args.Length == 0)
 {
-    await Solver.Solve<Day09>(opt => opt.ClearConsole = false);
+    await Solver.Solve<Day10>(opt => opt.ClearConsole = false);
 }
 else if (args.Length == 1 && args[0].Contains("all", StringComparison.CurrentCultureIgnoreCase))
 {
